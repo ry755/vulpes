@@ -1,0 +1,9 @@
+.vscode/
+
+boot.img
+base_image/**/*.elf
+base_image/**/*.sym
+bochs.conf
+
+**/zig-cache
+**/zig-out
