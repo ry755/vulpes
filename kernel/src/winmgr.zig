@@ -10,11 +10,14 @@ const Window = struct {
     height: u32,
     event_start: ?*event.QueueNode,
     event_end: ?*event.QueueNode,
+    framebuffer: *gfx.Framebuffer,
 };
 
-var bg_framebuffer_data = std.mem.zeroes([640 * 480 * 4]u8);
+pub var current_window: ?*Window = null;
+
+pub var bg_framebuffer_data = std.mem.zeroes([640 * 480 * 4]u8);
 pub var bg_framebuffer = gfx.Framebuffer{
-    .next = &test_framebuffer,
+    .next = null,
     .child = null,
     .data = &bg_framebuffer_data,
     .x = 0,
@@ -27,29 +30,61 @@ pub var bg_framebuffer = gfx.Framebuffer{
     .has_alpha = false,
 };
 
-var test_framebuffer_data = std.mem.zeroes([64 * 64 * 3]u8);
-var test_framebuffer = gfx.Framebuffer{
-    .next = null,
-    .child = null,
-    .data = &test_framebuffer_data,
-    .x = 8,
-    .y = 8,
-    .width = 64,
-    .height = 64,
-    .pitch = 64 * 3,
-    .bpp = 24,
-    .dirty = gfx.Rectangle{ .x1 = 0, .y1 = 0, .x2 = 0, .y2 = 0 },
-    .has_alpha = false,
-};
-
 pub fn initialize() void {
     gfx.invalidate_whole_framebuffer(&bg_framebuffer);
-    gfx.set_framebuffer(&test_framebuffer);
-    gfx.invalidate_whole_framebuffer(&test_framebuffer);
-    gfx.move_to(&gfx.Point{ .x = 8, .y = 8 });
-    gfx.set_color(0xFFFFFF, 0x000000);
-    gfx.draw_string("hi!!");
     gfx.main_framebuffer.child = &bg_framebuffer;
+}
+
+pub fn new_window(x: u32, y: u32, width: u32, height: u32) !*Window {
+    var window: *Window = try heap.allocator.create(Window);
+    errdefer heap.allocator.destroy(window);
+    window.*.x = x;
+    window.*.y = y;
+    window.*.width = width;
+    window.*.height = height;
+    window.*.event_start = null;
+    window.*.event_end = null;
+    window.*.framebuffer = try heap.allocator.create(gfx.Framebuffer);
+    errdefer heap.allocator.destroy(window.*.framebuffer);
+    window.*.framebuffer.*.next = null;
+    window.*.framebuffer.*.child = null;
+    const framebuffer_data = try heap.allocator.alloc(u8, width * height * 4);
+    window.*.framebuffer.*.data = framebuffer_data.ptr;
+    errdefer heap.allocator.destroy(window.*.framebuffer.*.data);
+    window.*.framebuffer.*.x = x;
+    window.*.framebuffer.*.y = y;
+    window.*.framebuffer.*.width = width;
+    window.*.framebuffer.*.height = height;
+    window.*.framebuffer.*.pitch = width * 4;
+    window.*.framebuffer.*.bpp = 32;
+    window.*.framebuffer.*.dirty = gfx.Rectangle{ .x1 = 0, .y1 = 0, .x2 = 0, .y2 = 0 };
+    window.*.framebuffer.*.has_alpha = false;
+
+    @memset(window.*.framebuffer.*.data[0 .. width * height * 4], 0);
+    gfx.invalidate_whole_framebuffer(window.*.framebuffer);
+
+    // insert the new window into the linked list of framebuffers
+    const old_next = bg_framebuffer.next;
+    bg_framebuffer.next = window.*.framebuffer;
+    window.*.framebuffer.next = old_next;
+
+    set_window(window);
+
+    return window;
+}
+
+pub fn destroy_window(window: *Window) void {
+    // remove this window from the linked list of framebuffers
+    bg_framebuffer.next = window.*.framebuffer.*.next;
+
+    heap.allocator.destroy(window.*.framebuffer.*.data);
+    heap.allocator.destroy(window.*.framebuffer);
+    heap.allocator.destroy(window);
+}
+
+pub fn set_window(window: *Window) void {
+    gfx.set_framebuffer(window.*.framebuffer);
+    current_window = window;
 }
 
 pub fn new_event(window: *Window, window_event: event.Event) !void {

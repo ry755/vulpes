@@ -43,19 +43,19 @@ export fn kernel_main(multiboot_info: *multiboot.MultibootInfo) void {
         &ide.write,
         mbr.mbr.partitions[0].lba_first_sector,
     );
+    fat.global_fat.mount("0:", true) catch @panic("failed to mount 0:");
+    defer fat.global_fat.unmount("0:");
+    read_font("0:/font.bin");
+    read_bg("0:/bg.raw");
     winmgr.initialize();
 
-    //fat.global_fat.mount("0:", true) catch @panic("failed to mount 0:");
-    //defer fat.global_fat.unmount("0:");
-    //var test_file = fat.fatfs.File.openRead("0:/test.txt") catch @panic("failed to open 0:/test.txt");
-    //defer test_file.close();
-    //var test_reader = test_file.reader();
-    //var test_contents: [512]u8 = std.mem.zeroes([512]u8);
-    //_ = test_reader.read(&test_contents) catch @panic("failed to read 0:/test.txt");
-    //writer.print("{s}\n", .{test_contents}) catch unreachable;
+    var test_window = winmgr.new_window(64, 64, 128, 128) catch @panic("failed to create new window");
+    winmgr.set_window(test_window);
+    gfx.move_to(&gfx.Point{ .x = 0, .y = 0 });
+    gfx.draw_string("hello bitches");
 
     writer.print("kernel initialization done, entering event loop\n", .{}) catch unreachable;
-    event_loop();
+    main_loop();
 }
 
 pub fn panic(message: []const u8, _: ?*builtin.StackTrace, _: ?usize) noreturn {
@@ -66,19 +66,28 @@ pub fn panic(message: []const u8, _: ?*builtin.StackTrace, _: ?usize) noreturn {
     while (true) {}
 }
 
-fn event_loop() noreturn {
-    var x: u32 = 8;
+fn main_loop() noreturn {
     while (true) {
         const e = event.get_next_event();
-        switch (e.event_type) {
-            .key_down => {
-                const scancode: u8 = @truncate(e.parameters[0]);
-                const character = kbd.scancode_to_ascii(scancode);
-                gfx.move_to(&gfx.Point{ .x = x, .y = 128 });
-                gfx.writer.print("{c}", .{character}) catch unreachable;
-                x += gfx.default_font.width;
-            },
-            else => {},
+        if (winmgr.current_window) |w| {
+            winmgr.new_event(w, e) catch {};
         }
     }
+}
+
+fn read_font(path: [:0]const u8) void {
+    var font_file = fat.fatfs.File.openRead(path);
+    var font = font_file catch @panic("failed to open font.bin!");
+    defer font.close();
+    var font_reader = font.reader();
+    _ = font_reader.read(&gfx.default_font_data) catch @panic("failed to read font.bin!");
+}
+
+fn read_bg(path: [:0]const u8) void {
+    var bg_file = fat.fatfs.File.openRead(path);
+    var bg = bg_file catch return;
+    defer bg.close();
+    var bg_reader = bg.reader();
+    _ = bg_reader.read(&winmgr.bg_framebuffer_data) catch return;
+    gfx.invalidate_whole_framebuffer_chain(&winmgr.bg_framebuffer);
 }

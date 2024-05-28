@@ -4,7 +4,8 @@ const Writer = std.io.Writer(@TypeOf(.{}), error{}, draw_string_writer);
 pub const writer = Writer{ .context = .{} };
 
 pub const Font = struct { data: []const u8, width: u8, height: u8 };
-pub const default_font = Font{ .data = @embedFile("font.bin")[0..], .width = 8, .height = 16 };
+pub var default_font_data = std.mem.zeroes([32768]u8);
+pub const default_font = Font{ .data = &default_font_data, .width = 8, .height = 16 };
 pub const Point = struct { x: u32, y: u32 };
 pub const Rectangle = struct { x1: u32, y1: u32, x2: u32, y2: u32 };
 pub const Framebuffer = struct {
@@ -190,23 +191,8 @@ pub fn draw_font_tile(tile: u8, x: u32, y: u32, foreground_color: u32, backgroun
         }
     }
 
-    // if our dirty rectangle is not set, then set it directly to our coords and size
-    if (current_framebuffer.dirty.x1 == 0 and
-        current_framebuffer.dirty.y1 == 0 and
-        current_framebuffer.dirty.x2 == 0 and
-        current_framebuffer.dirty.y2 == 0)
-    {
-        current_framebuffer.dirty.x1 = x;
-        current_framebuffer.dirty.y1 = y;
-        current_framebuffer.dirty.x2 = x + font.*.width;
-        current_framebuffer.dirty.y2 = y + font.*.height;
-    } else {
-        // we already have a dirty rectangle, integrate our newly drawn font tile into it
-        current_framebuffer.dirty.x1 = if (current_framebuffer.dirty.x1 < x) current_framebuffer.dirty.x1 else x;
-        current_framebuffer.dirty.y1 = if (current_framebuffer.dirty.y1 < y) current_framebuffer.dirty.y1 else y;
-        current_framebuffer.dirty.x2 = if (current_framebuffer.dirty.x2 > x + font.*.width) current_framebuffer.dirty.x2 else x + font.*.width;
-        current_framebuffer.dirty.y2 = if (current_framebuffer.dirty.y2 > y + font.*.height) current_framebuffer.dirty.y2 else y + font.*.height;
-    }
+    const dirty = Rectangle{ .x1 = x, .y1 = y, .x2 = x + font.*.width, .y2 = y + font.*.height };
+    invalidate_partial_framebuffer(current_framebuffer, &dirty);
 }
 
 pub fn draw_string(string: []const u8) void {

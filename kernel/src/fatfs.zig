@@ -326,8 +326,7 @@ pub const File = struct {
     }
 
     pub fn close(file: *Self) void {
-        mapGenericError(api.close(&file.raw)) catch |e| {
-            _ = e;
+        mapGenericError(api.close(&file.raw)) catch {
             // logger.err("failed to close file: {s}", .{@errorName(e)});
         };
         file.* = undefined;
