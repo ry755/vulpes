@@ -49,10 +49,10 @@ export fn kernel_main(multiboot_info: *multiboot.MultibootInfo) void {
     read_bg("0:/bg.raw");
     winmgr.initialize();
 
-    var test_window = winmgr.new_window(64, 64, 128, 128) catch @panic("failed to create new window");
+    var test_window = winmgr.new_window(64, 64, 192, 128) catch @panic("failed to create new window");
     winmgr.set_window(test_window);
     gfx.move_to(&gfx.Point{ .x = 0, .y = 0 });
-    gfx.draw_string("hello bitches");
+    gfx.draw_string("hello world!\nany key to destroy");
 
     writer.print("kernel initialization done, entering event loop\n", .{}) catch unreachable;
     main_loop();
@@ -71,6 +71,16 @@ fn main_loop() noreturn {
         const e = event.get_next_event();
         if (winmgr.current_window) |w| {
             winmgr.new_event(w, e) catch {};
+        }
+
+        if (winmgr.current_window) |w| {
+            const we = winmgr.get_next_event(w);
+            switch (we.event_type) {
+                .key_down => {
+                    winmgr.destroy_window(w);
+                },
+                else => {},
+            }
         }
     }
 }

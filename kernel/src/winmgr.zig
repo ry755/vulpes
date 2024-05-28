@@ -50,7 +50,7 @@ pub fn new_window(x: u32, y: u32, width: u32, height: u32) !*Window {
     window.*.framebuffer.*.child = null;
     const framebuffer_data = try heap.allocator.alloc(u8, width * height * 4);
     window.*.framebuffer.*.data = framebuffer_data.ptr;
-    errdefer heap.allocator.destroy(window.*.framebuffer.*.data);
+    errdefer heap.allocator.free(framebuffer_data);
     window.*.framebuffer.*.x = x;
     window.*.framebuffer.*.y = y;
     window.*.framebuffer.*.width = width;
@@ -77,9 +77,13 @@ pub fn destroy_window(window: *Window) void {
     // remove this window from the linked list of framebuffers
     bg_framebuffer.next = window.*.framebuffer.*.next;
 
-    heap.allocator.destroy(window.*.framebuffer.*.data);
+    current_window = null;
+
+    heap.allocator.free(window.*.framebuffer.*.data[0 .. window.*.framebuffer.*.width * window.*.framebuffer.*.height * 4]);
     heap.allocator.destroy(window.*.framebuffer);
     heap.allocator.destroy(window);
+
+    gfx.invalidate_whole_framebuffer(&bg_framebuffer);
 }
 
 pub fn set_window(window: *Window) void {
@@ -95,16 +99,16 @@ pub fn new_event(window: *Window, window_event: event.Event) !void {
 }
 
 pub fn get_next_event(window: *Window) event.Event {
-    const s = window.event_start orelse return event.Event{
+    const s = window.*.event_start orelse return event.Event{
         .event_type = event.EventType.empty,
         .parameters = std.mem.zeroes([8]u32),
     };
     defer heap.allocator.destroy(s);
     if (s.next) |next| {
-        window.event_start = next;
+        window.*.event_start = next;
     } else {
-        window.event_start = null;
-        window.event_end = null;
+        window.*.event_start = null;
+        window.*.event_end = null;
     }
     return s.data;
 }
