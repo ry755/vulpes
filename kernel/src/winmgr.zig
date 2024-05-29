@@ -149,6 +149,21 @@ pub fn destroy_window(window: *Window) void {
     gfx.invalidate_whole_framebuffer_chain(&bg_framebuffer);
 }
 
+pub fn start_dragging_window(window: *Window) void {
+    const point = gfx.Point{
+        .x = mouse.coordinates.x -% window.x,
+        .y = mouse.coordinates.y -% window.y,
+    };
+    while (mouse.buttons.left) {
+        window.*.x = mouse.coordinates.x -% point.x;
+        window.*.y = mouse.coordinates.y -% point.y;
+        window.*.framebuffer.*.x = mouse.coordinates.x -% point.x;
+        window.*.framebuffer.*.y = mouse.coordinates.y -% point.y;
+        gfx.invalidate_whole_framebuffer(window.*.framebuffer);
+    }
+    gfx.invalidate_whole_framebuffer_chain(&bg_framebuffer);
+}
+
 pub fn move_window_to(window: *Window, point: *const gfx.Point) void {
     window.*.x = point.*.x;
     window.*.y = point.*.y;

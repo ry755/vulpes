@@ -93,7 +93,7 @@ fn main_loop() noreturn {
                     }
                 },
                 .mouse_down => {
-                    winmgr.move_window_to(w, &mouse.coordinates);
+                    winmgr.start_dragging_window(w);
                 },
                 else => {},
             }
