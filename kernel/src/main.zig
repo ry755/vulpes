@@ -58,11 +58,11 @@ export fn kernel_main(multiboot_info: *multiboot.MultibootInfo) void {
 }
 
 pub fn panic(message: []const u8, _: ?*builtin.StackTrace, _: ?usize) noreturn {
-    writer.print("\noops!!! a fucky wucky occurred!!!\n{s}\n", .{message}) catch unreachable;
+    writer.print("\nPANIC!\n{s}\n", .{message}) catch unreachable;
     gfx.set_framebuffer(&winmgr.bg_framebuffer);
     gfx.move_to(&gfx.Point{ .x = 0, .y = 0 });
     gfx.set_color(0xFFFFFF, 0xFF0000);
-    gfx.writer.print("{s}", .{message}) catch unreachable;
+    gfx.writer.print("PANIC! {s}", .{message}) catch unreachable;
     while (true) {}
 }
 
