@@ -2,8 +2,12 @@ const std = @import("std");
 const event = @import("event.zig");
 const gfx = @import("gfx.zig");
 const heap = @import("heap.zig");
+const mouse = @import("mouse.zig");
+const writer = @import("serial.zig").writer;
 
 const Window = struct {
+    next: ?*Window,
+    prev: ?*Window,
     x: u32,
     y: u32,
     width: u32,
@@ -35,9 +39,33 @@ pub fn initialize() void {
     gfx.main_framebuffer.child = &bg_framebuffer;
 }
 
+pub fn update() void {
+    const e = event.get_next_event();
+    if (current_window) |w| {
+        new_event(w, e) catch {};
+    }
+}
+
+pub fn window_under_cursor() ?*Window {
+    var window_to_check: ?*Window = current_window;
+    while (window_to_check != null) {
+        if ((mouse.coordinates.x >= window_to_check.?.*.x) and
+            (mouse.coordinates.y >= window_to_check.?.*.y) and
+            (mouse.coordinates.x <= window_to_check.?.*.x + window_to_check.?.*.width) and
+            (mouse.coordinates.y <= window_to_check.?.*.y + window_to_check.?.*.height))
+        {
+            return window_to_check.?;
+        }
+        window_to_check = window_to_check.?.*.next;
+    }
+    return null;
+}
+
 pub fn new_window(x: u32, y: u32, width: u32, height: u32) !*Window {
     var window: *Window = try heap.allocator.create(Window);
     errdefer heap.allocator.destroy(window);
+    window.*.next = null;
+    window.*.prev = null;
     window.*.x = x;
     window.*.y = y;
     window.*.width = width;
@@ -74,21 +102,81 @@ pub fn new_window(x: u32, y: u32, width: u32, height: u32) !*Window {
 }
 
 pub fn destroy_window(window: *Window) void {
-    // remove this window from the linked list of framebuffers
-    bg_framebuffer.next = window.*.framebuffer.*.next;
+    // move this window to the front of the stack
+    set_window(window);
 
-    current_window = null;
+    // remove this window from the linked list of framebuffers
+    var list: ?*gfx.Framebuffer = &bg_framebuffer;
+    while (list.?.*.next != null) {
+        if (list.?.*.next == window.*.framebuffer) {
+            list.?.*.next = list.?.*.next.?.*.next;
+            break;
+        }
+        list = list.?.*.next;
+    }
+
+    // remove this window from the linked list of windows
+    current_window = current_window.?.next;
+    if (current_window != null)
+        current_window.?.prev = null;
 
     heap.allocator.free(window.*.framebuffer.*.data[0 .. window.*.framebuffer.*.width * window.*.framebuffer.*.height * 4]);
     heap.allocator.destroy(window.*.framebuffer);
     heap.allocator.destroy(window);
 
-    gfx.invalidate_whole_framebuffer(&bg_framebuffer);
+    var w: ?*Window = current_window;
+    writer.print("w ", .{}) catch unreachable;
+    while (w != null) {
+        writer.print("{*}", .{w}) catch unreachable;
+        w = w.?.*.next;
+        if (w != null)
+            writer.print("->", .{}) catch unreachable;
+    }
+    writer.print("\n", .{}) catch unreachable;
+
+    var fb: ?*gfx.Framebuffer = &bg_framebuffer;
+    writer.print("fb ", .{}) catch unreachable;
+    while (fb != null) {
+        writer.print("{*}", .{fb}) catch unreachable;
+        fb = fb.?.*.next;
+        if (fb != null)
+            writer.print("->", .{}) catch unreachable;
+    }
+    writer.print("\n", .{}) catch unreachable;
+
+    gfx.invalidate_whole_framebuffer_chain(&bg_framebuffer);
 }
 
 pub fn set_window(window: *Window) void {
+    // bring this window to the front
+    if (current_window != null) {
+        move_window_to_front(window);
+    } else {
+        bg_framebuffer.next = window.*.framebuffer;
+        current_window = window;
+    }
     gfx.set_framebuffer(window.*.framebuffer);
-    current_window = window;
+    gfx.invalidate_whole_framebuffer_chain(&bg_framebuffer);
+
+    var w: ?*Window = current_window;
+    writer.print("w ", .{}) catch unreachable;
+    while (w != null) {
+        writer.print("{*}", .{w}) catch unreachable;
+        w = w.?.*.next;
+        if (w != null)
+            writer.print("->", .{}) catch unreachable;
+    }
+    writer.print("\n", .{}) catch unreachable;
+
+    var fb: ?*gfx.Framebuffer = &bg_framebuffer;
+    writer.print("fb ", .{}) catch unreachable;
+    while (fb != null) {
+        writer.print("{*}", .{fb}) catch unreachable;
+        fb = fb.?.*.next;
+        if (fb != null)
+            writer.print("->", .{}) catch unreachable;
+    }
+    writer.print("\n", .{}) catch unreachable;
 }
 
 pub fn new_event(window: *Window, window_event: event.Event) !void {
@@ -111,4 +199,29 @@ pub fn get_next_event(window: *Window) event.Event {
         window.*.event_end = null;
     }
     return s.data;
+}
+
+fn move_window_to_front(window: *Window) void {
+    if (current_window == window) return;
+
+    // move the passed window's fb to the end
+    var list: ?*gfx.Framebuffer = &bg_framebuffer;
+    while (list.?.*.next != null) {
+        if (list.?.*.next == window.*.framebuffer)
+            list.?.*.next = list.?.*.next.?.*.next;
+        list = list.?.*.next;
+    }
+    list.?.*.next = window.*.framebuffer;
+    window.*.framebuffer.*.next = null;
+
+    // move the passed window to the beginning
+    var prev = window.*.prev;
+    if (prev != null)
+        prev.?.*.next = window.*.next;
+    if (window.*.next != null)
+        window.*.next.?.*.prev = prev;
+    window.*.next = current_window;
+    current_window.?.*.prev = window;
+    window.*.prev = null;
+    current_window = window;
 }

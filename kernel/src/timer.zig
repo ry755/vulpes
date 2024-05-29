@@ -4,6 +4,7 @@ const gfx = @import("gfx.zig");
 const io = @import("io.zig");
 const isr = @import("isr.zig");
 const mouse = @import("mouse.zig");
+const winmgr = @import("winmgr.zig");
 
 var ticks: u64 = 0;
 var mouse_coords: gfx.Point = undefined;
@@ -32,6 +33,7 @@ pub fn interrupt_handler() void {
         }
         gfx.blit_buffered_framebuffer_to_hw();
     }
+    winmgr.update();
 }
 
 pub fn get_ticks() u64 {

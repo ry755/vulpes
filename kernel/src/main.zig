@@ -49,12 +49,12 @@ export fn kernel_main(multiboot_info: *multiboot.MultibootInfo) void {
     read_bg("0:/bg.raw");
     winmgr.initialize();
 
-    var test_window = winmgr.new_window(64, 64, 192, 128) catch @panic("failed to create new window");
+    var test_window = winmgr.new_window(64, 64, 256, 128) catch @panic("failed to create new window");
     winmgr.set_window(test_window);
     gfx.move_to(&gfx.Point{ .x = 0, .y = 0 });
-    gfx.draw_string("hello world!\nany key to destroy");
+    gfx.draw_string("hello world!\na: add window\nr: remove window\ns: swap window");
 
-    writer.print("kernel initialization done, entering event loop\n", .{}) catch unreachable;
+    writer.print("kernel initialization done\n", .{}) catch unreachable;
     main_loop();
 }
 
@@ -62,22 +62,35 @@ pub fn panic(message: []const u8, _: ?*builtin.StackTrace, _: ?usize) noreturn {
     writer.print("\noops!!! a fucky wucky occurred!!!\n{s}\n", .{message}) catch unreachable;
     gfx.set_framebuffer(&winmgr.bg_framebuffer);
     gfx.move_to(&gfx.Point{ .x = 0, .y = 0 });
+    gfx.set_color(0xFFFFFF, 0xFF0000);
     gfx.writer.print("{s}", .{message}) catch unreachable;
     while (true) {}
 }
 
 fn main_loop() noreturn {
     while (true) {
-        const e = event.get_next_event();
-        if (winmgr.current_window) |w| {
-            winmgr.new_event(w, e) catch {};
-        }
-
         if (winmgr.current_window) |w| {
             const we = winmgr.get_next_event(w);
             switch (we.event_type) {
                 .key_down => {
-                    winmgr.destroy_window(w);
+                    switch (kbd.scancode_to_ascii(@truncate(we.parameters[0]))) {
+                        'a' => {
+                            var window = winmgr.new_window(mouse.coordinates.x, mouse.coordinates.y, 256, 128) catch @panic("failed to create new window");
+                            gfx.move_to(&gfx.Point{ .x = 0, .y = 0 });
+                            gfx.draw_string("hello world!\n");
+                            gfx.writer.print("i am {*}", .{window}) catch unreachable;
+                        },
+                        'r' => {
+                            winmgr.destroy_window(w);
+                        },
+                        's' => {
+                            if (winmgr.window_under_cursor()) |w2| {
+                                writer.print("window under cursor: {*}\n", .{w2}) catch unreachable;
+                                winmgr.set_window(w2);
+                            }
+                        },
+                        else => {},
+                    }
                 },
                 else => {},
             }
