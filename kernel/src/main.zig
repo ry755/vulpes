@@ -49,8 +49,7 @@ export fn kernel_main(multiboot_info: *multiboot.MultibootInfo) void {
     read_bg("0:/bg.raw");
     winmgr.initialize();
 
-    var test_window = winmgr.new_window(64, 64, 256, 128) catch @panic("failed to create new window");
-    winmgr.set_window(test_window);
+    _ = winmgr.new_window(64, 64, 256, 128) catch @panic("failed to create new window");
     gfx.move_to(&gfx.Point{ .x = 0, .y = 0 });
     gfx.draw_string("hello world!\na: add window\nr: remove window\ns: swap window");
 
@@ -86,11 +85,15 @@ fn main_loop() noreturn {
                         's' => {
                             if (winmgr.window_under_cursor()) |w2| {
                                 writer.print("window under cursor: {*}\n", .{w2}) catch unreachable;
-                                winmgr.set_window(w2);
+                                winmgr.set_drawing_window(w2);
+                                winmgr.bring_window_to_foreground(w2);
                             }
                         },
                         else => {},
                     }
+                },
+                .mouse_down => {
+                    winmgr.move_window_to(w, &mouse.coordinates);
                 },
                 else => {},
             }

@@ -9,6 +9,8 @@ pub const EventType = enum(u32) {
     empty,
     key_down,
     key_up,
+    mouse_down,
+    mouse_up,
 };
 
 pub const QueueNode = struct {

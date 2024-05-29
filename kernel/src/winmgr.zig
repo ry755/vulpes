@@ -96,14 +96,16 @@ pub fn new_window(x: u32, y: u32, width: u32, height: u32) !*Window {
     bg_framebuffer.next = window.*.framebuffer;
     window.*.framebuffer.next = old_next;
 
-    set_window(window);
+    bring_window_to_foreground(window);
+    set_drawing_window(window);
 
     return window;
 }
 
 pub fn destroy_window(window: *Window) void {
     // move this window to the front of the stack
-    set_window(window);
+    // this is required for the code below
+    bring_window_to_foreground(window);
 
     // remove this window from the linked list of framebuffers
     var list: ?*gfx.Framebuffer = &bg_framebuffer;
@@ -147,7 +149,19 @@ pub fn destroy_window(window: *Window) void {
     gfx.invalidate_whole_framebuffer_chain(&bg_framebuffer);
 }
 
-pub fn set_window(window: *Window) void {
+pub fn move_window_to(window: *Window, point: *const gfx.Point) void {
+    window.*.x = point.*.x;
+    window.*.y = point.*.y;
+    window.*.framebuffer.*.x = point.*.x;
+    window.*.framebuffer.*.y = point.*.y;
+    gfx.invalidate_whole_framebuffer_chain(&bg_framebuffer);
+}
+
+pub fn set_drawing_window(window: *Window) void {
+    gfx.set_framebuffer(window.*.framebuffer);
+}
+
+pub fn bring_window_to_foreground(window: *Window) void {
     // bring this window to the front
     if (current_window != null) {
         move_window_to_front(window);
@@ -155,7 +169,6 @@ pub fn set_window(window: *Window) void {
         bg_framebuffer.next = window.*.framebuffer;
         current_window = window;
     }
-    gfx.set_framebuffer(window.*.framebuffer);
     gfx.invalidate_whole_framebuffer_chain(&bg_framebuffer);
 
     var w: ?*Window = current_window;

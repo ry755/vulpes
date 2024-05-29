@@ -8,7 +8,7 @@ const MouseState = enum {
     mouse_state_2,
 };
 
-const Buttons = struct {
+pub const Buttons = struct {
     left: bool,
     middle: bool,
     right: bool,
