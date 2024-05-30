@@ -18,6 +18,8 @@ const timer = @import("timer.zig");
 const winmgr = @import("winmgr.zig");
 const writer = serial.writer;
 
+extern fn enter_user_program() callconv(.C) void;
+
 export fn kernel_main(multiboot_info: *multiboot.MultibootInfo) void {
     gdt.initialize();
     serial.initialize();
@@ -49,12 +51,21 @@ export fn kernel_main(multiboot_info: *multiboot.MultibootInfo) void {
     read_bg("0:/bg.raw");
     winmgr.initialize();
 
-    _ = winmgr.new_window(64, 64, 256, 128) catch @panic("failed to create new window");
-    gfx.move_to(&gfx.Point{ .x = 0, .y = 0 });
-    gfx.draw_string("hello world!\na: add window\nr: remove window\ns: swap window");
-
     writer.print("kernel initialization done\n", .{}) catch unreachable;
-    main_loop();
+    //test_loop();
+
+    const load_address: [*]u8 = @ptrFromInt(0x01000000);
+    var test_file = fat.fatfs.File.openRead("0:/test.bin");
+    var file = test_file catch @panic("failed to open test.bin!");
+    defer file.close();
+    var file_reader = file.reader();
+    _ = file_reader.read(load_address[0..512]) catch @panic("failed to read test.bin!");
+
+    writer.print("entering user program\n", .{}) catch unreachable;
+    enter_user_program();
+    writer.print("returned from user program\n", .{}) catch unreachable;
+
+    while (true) {}
 }
 
 pub fn panic(message: []const u8, _: ?*builtin.StackTrace, _: ?usize) noreturn {
@@ -66,7 +77,11 @@ pub fn panic(message: []const u8, _: ?*builtin.StackTrace, _: ?usize) noreturn {
     while (true) {}
 }
 
-fn main_loop() noreturn {
+fn test_loop() noreturn {
+    _ = winmgr.new_window(64, 64, 256, 128) catch @panic("failed to create new window");
+    gfx.move_to(&gfx.Point{ .x = 0, .y = 0 });
+    gfx.draw_string("hello world!\na: add window\nr: remove window\ns: swap window");
+
     while (true) {
         if (winmgr.current_window) |w| {
             const we = winmgr.get_next_event(w);

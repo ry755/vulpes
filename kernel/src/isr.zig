@@ -1,6 +1,7 @@
 const std = @import("std");
 const pic = @import("pic.zig");
 const stackframe = @import("stackframe.zig");
+const syscall = @import("syscall.zig");
 const writer = @import("serial.zig").writer;
 
 const IrqHandler = ?*const fn () void;
@@ -15,12 +16,12 @@ pub fn uninstall_handler(irq: u8) void {
     irq_handlers[irq] = null;
 }
 
-export fn interrupt_handler(irq: u8, stack_frame: *stackframe.StackFrame, err: u32) void {
-    _ = stack_frame;
+export fn interrupt_handler(irq: u8, stack_frame: *stackframe.StackFrame, err: u32) callconv(.C) void {
     if (irq < 32) {
         exception_handler(irq, err);
     } else if (irq == 48) {
-        // syscall
+        // syscall !!
+        stack_frame.*.eax = syscall.syscall(stack_frame.*.eax, stack_frame.*.esp);
     } else {
         const handler = irq_handlers[irq - 32];
         if (handler) |handler_fn| {

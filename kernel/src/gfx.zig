@@ -3,11 +3,11 @@ const std = @import("std");
 const Writer = std.io.Writer(@TypeOf(.{}), error{}, draw_string_writer);
 pub const writer = Writer{ .context = .{} };
 
-pub const Font = struct { data: []const u8, width: u8, height: u8 };
+pub const Font = packed struct { data: [*]u8, width: u8, height: u8 };
 pub var default_font_data = std.mem.zeroes([32768]u8);
-pub const default_font = Font{ .data = &default_font_data, .width = 8, .height = 16 };
-pub const Point = struct { x: u32, y: u32 };
-pub const Rectangle = struct { x1: u32, y1: u32, x2: u32, y2: u32 };
+pub var default_font = Font{ .data = undefined, .width = 8, .height = 16 };
+pub const Point = packed struct { x: u32, y: u32 };
+pub const Rectangle = packed struct { x1: u32, y1: u32, x2: u32, y2: u32 };
 pub const Framebuffer = struct {
     next: ?*Framebuffer,
     child: ?*Framebuffer,
@@ -77,6 +77,8 @@ var hw_framebuffer_green_field_position: u8 = undefined;
 var hw_framebuffer_blue_field_position: u8 = undefined;
 
 pub fn initialize(address: u32, pitch: u32, bpp: u8, color: u32, red_pos: u8, green_pos: u8, blue_pos: u8) void {
+    default_font.data = &default_font_data;
+
     hw_framebuffer.data = @ptrFromInt(address);
     hw_framebuffer.bpp = bpp;
     hw_framebuffer.pitch = pitch;
@@ -173,7 +175,7 @@ pub fn invalidate_partial_framebuffer(framebuffer: *Framebuffer, dirty: *const R
 
 pub fn draw_font_tile(tile: u8, x: u32, y: u32, foreground_color: u32, background_color: u32, font: *Font) void {
     const font_offset: u32 = @as(u32, font.*.width) * @as(u32, font.*.height) * @as(u32, tile);
-    const font_data = font.*.data.ptr + font_offset;
+    const font_data = font.*.data + font_offset;
 
     for (0..font.*.height) |y_counter| {
         for (0..font.*.width) |x_counter| {
@@ -193,6 +195,24 @@ pub fn draw_font_tile(tile: u8, x: u32, y: u32, foreground_color: u32, backgroun
 
     const dirty = Rectangle{ .x1 = x, .y1 = y, .x2 = x + font.*.width, .y2 = y + font.*.height };
     invalidate_partial_framebuffer(current_framebuffer, &dirty);
+}
+
+pub fn draw_c_string(string: [*:0]u8) void {
+    var string_mut = string;
+    var x_mut = current_coordinates.x;
+    var y_mut = current_coordinates.y;
+    while (string_mut[0] != 0) {
+        if (string_mut[0] == '\n') {
+            x_mut = current_coordinates.x;
+            y_mut += current_font.*.height;
+        } else {
+            draw_font_tile(string_mut[0], x_mut, y_mut, current_foreground_color, current_background_color, current_font);
+            x_mut += current_font.*.width;
+        }
+        string_mut += 1;
+    }
+    current_coordinates.x = x_mut;
+    current_coordinates.y = y_mut;
 }
 
 pub fn draw_string(string: []const u8) void {

@@ -4,20 +4,39 @@ stack_bottom:
 .skip 16384 # 16 KiB
 stack_top:
 
+old_stack_ptr:
+.skip 4
+
 .section .text
 .global _start
 .type _start, @function
 _start:
-    mov $stack_top, %esp
+    movl $stack_top, %esp
 
     /* push multiboot header struct pointer */
-    push %ebx
+    pushl %ebx
 
     call kernel_main
 
     cli
 1:  hlt
     jmp 1b
+
+.global enter_user_program
+.type enter_user_program, @function
+enter_user_program:
+    pushl %ebp
+    movl %esp, %ebp
+
+    pushal
+    movl %esp, old_stack_ptr
+    movl $0x02000000, %esp
+    call 0x01000000
+    movl old_stack_ptr, %esp
+    popal
+
+    leave
+    ret
 
 .extern interrupt_handler
 .macro ISR_NOERR num

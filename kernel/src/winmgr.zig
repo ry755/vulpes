@@ -5,7 +5,7 @@ const heap = @import("heap.zig");
 const mouse = @import("mouse.zig");
 const writer = @import("serial.zig").writer;
 
-const Window = struct {
+pub const Window = struct {
     next: ?*Window,
     prev: ?*Window,
     x: u32,

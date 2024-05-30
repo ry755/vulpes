@@ -6,11 +6,11 @@ pub const Event = struct {
     parameters: [8]u32,
 };
 pub const EventType = enum(u32) {
-    empty,
-    key_down,
-    key_up,
-    mouse_down,
-    mouse_up,
+    empty = 0,
+    key_down = 1,
+    key_up = 2,
+    mouse_down = 3,
+    mouse_up = 4,
 };
 
 pub const QueueNode = struct {
