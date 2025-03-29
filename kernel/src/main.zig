@@ -55,7 +55,7 @@ export fn kernel_main(multiboot_info: *multiboot.MultibootInfo) void {
     //test_loop();
 
     const load_address: [*]u8 = @ptrFromInt(0x01000000);
-    var test_file = fat.fatfs.File.openRead("0:/test.bin");
+    const test_file = fat.fatfs.File.openRead("0:/test.bin");
     var file = test_file catch @panic("failed to open test.bin!");
     defer file.close();
     var file_reader = file.reader();
@@ -89,7 +89,7 @@ fn test_loop() noreturn {
                 .key_down => {
                     switch (kbd.scancode_to_ascii(@truncate(we.parameters[0]))) {
                         'a' => {
-                            var window = winmgr.new_window(mouse.coordinates.x, mouse.coordinates.y, 256, 128) catch @panic("failed to create new window");
+                            const window = winmgr.new_window(mouse.coordinates.x, mouse.coordinates.y, 256, 128) catch @panic("failed to create new window");
                             gfx.move_to(&gfx.Point{ .x = 0, .y = 0 });
                             gfx.draw_string("hello world!\n");
                             gfx.writer.print("i am {*}", .{window}) catch unreachable;
@@ -117,7 +117,7 @@ fn test_loop() noreturn {
 }
 
 fn read_font(path: [:0]const u8) void {
-    var font_file = fat.fatfs.File.openRead(path);
+    const font_file = fat.fatfs.File.openRead(path);
     var font = font_file catch @panic("failed to open font.bin!");
     defer font.close();
     var font_reader = font.reader();
@@ -125,7 +125,7 @@ fn read_font(path: [:0]const u8) void {
 }
 
 fn read_bg(path: [:0]const u8) void {
-    var bg_file = fat.fatfs.File.openRead(path);
+    const bg_file = fat.fatfs.File.openRead(path);
     var bg = bg_file catch return;
     defer bg.close();
     var bg_reader = bg.reader();

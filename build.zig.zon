@@ -1,0 +1,14 @@
+.{
+    .name = "vulpes",
+    .version = "0.1.0",
+    .paths = .{
+        "kernel",
+        "build.zig",
+        "build.zig.zon",
+    },
+    .dependencies = .{
+        .zfat = .{
+            .path = "zfat",
+        },
+    },
+}

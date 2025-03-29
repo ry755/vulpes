@@ -5,5 +5,5 @@ base_image/**/*.elf
 base_image/**/*.sym
 bochs.conf
 
-**/zig-cache
+**/.zig-cache
 **/zig-out

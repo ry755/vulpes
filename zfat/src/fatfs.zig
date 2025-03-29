@@ -4,7 +4,6 @@ const c = @cImport({
     @cInclude("ff.h");
     @cInclude("diskio.h");
 });
-// const logger = std.log.scoped(.fatfs);
 
 pub const volume_count = c.FF_VOLUMES;
 
@@ -146,10 +145,7 @@ pub const Dir = struct {
     }
 
     pub fn close(dir: *Self) void {
-        mapGenericError(api.closedir(&dir.raw)) catch |e| {
-            _ = e;
-            // logger.err("failed to close directory: {s}", .{@errorName(e)});
-        };
+        mapGenericError(api.closedir(&dir.raw)) catch {};
         dir.* = undefined;
     }
 
@@ -326,9 +322,7 @@ pub const File = struct {
     }
 
     pub fn close(file: *Self) void {
-        mapGenericError(api.close(&file.raw)) catch {
-            // logger.err("failed to close file: {s}", .{@errorName(e)});
-        };
+        mapGenericError(api.close(&file.raw)) catch {};
         file.* = undefined;
     }
 
@@ -566,22 +560,21 @@ comptime {
 export fn disk_status(
     pdrv: c.BYTE, // Physical drive nmuber to identify the drive */
 ) c.DSTATUS {
-    // logger.debug("disk.status({})", .{pdrv});
+    //logger.debug("disk.status({})", .{pdrv});
 
     const disk = disks[pdrv] orelse return c.STA_NOINIT;
     return disk.getStatus().toInteger();
 }
 
 export fn disk_initialize(pdrv: c.BYTE) c.DSTATUS {
-    // logger.debug("disk.initialize({})", .{pdrv});
+    //logger.debug("disk.initialize({})", .{pdrv});
 
     const disk = disks[pdrv] orelse return c.STA_NOINIT;
 
     if (disk.initialize()) |status| {
         return status.toInteger();
-    } else |err| {
-        _ = @errorName(err);
-        // logger.err("disk.initialize({}) failed: {s}", .{ pdrv, @errorName(err) });
+    } else |_| {
+        //logger.err("disk.initialize({}) failed: {s}", .{ pdrv, @errorName(err) });
         return c.STA_NOINIT;
     }
 }
@@ -593,7 +586,7 @@ export fn disk_read(
     count: c.UINT, // Number of sectors to read */
 ) c.DRESULT {
     const disk = disks[pdrv] orelse return c.RES_NOTRDY;
-    // logger.debug("disk.read({}, {*}, {}, {})", .{ pdrv, buff, sector, count });
+    //logger.debug("disk.read({}, {*}, {}, {})", .{ pdrv, buff, sector, count });
     return Disk.mapResult(disk.read(buff, sector, count));
 }
 
@@ -604,7 +597,7 @@ export fn disk_write(
     count: c.UINT, // Number of sectors to write */
 ) c.DRESULT {
     const disk = disks[pdrv] orelse return c.RES_NOTRDY;
-    // logger.debug("disk.write({}, {*}, {}, {})", .{ pdrv, buff, sector, count });
+    //logger.debug("disk.write({}, {*}, {}, {})", .{ pdrv, buff, sector, count });
     return Disk.mapResult(disk.write(buff, sector, count));
 }
 
@@ -614,7 +607,7 @@ export fn disk_ioctl(
     buff: [*]u8, // Buffer to send/receive control data */
 ) c.DRESULT {
     const disk = disks[pdrv] orelse return c.RES_NOTRDY;
-    // logger.debug("disk.ioctl({}, {}, {*})", .{ pdrv, cmd, buff });
+    //logger.debug("disk.ioctl({}, {}, {*})", .{ pdrv, cmd, buff });
     return Disk.mapResult(disk.ioctl(@as(IoCtl, @enumFromInt(cmd)), buff));
 }
 
@@ -715,7 +708,7 @@ fn ErrorSet(comptime options: []const anyerror) type {
             },
         });
 
-        pub fn throw(error_code: c.FRESULT) Error!void {
+        pub inline fn throw(error_code: c.FRESULT) Error!void {
             const mapped_error = if (mapGenericError(error_code)) |_| {
                 return;
             } else |err| err;
@@ -730,7 +723,7 @@ fn ErrorSet(comptime options: []const anyerror) type {
     };
 }
 
-pub fn mapGenericError(code: c.FRESULT) GlobalError!void {
+pub inline fn mapGenericError(code: c.FRESULT) GlobalError!void {
     return switch (code) {
         c.FR_OK => {},
         c.FR_DISK_ERR => error.DiskErr,

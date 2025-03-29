@@ -1,4 +1,5 @@
 const std = @import("std");
+const serial = @import("serial.zig");
 
 const Writer = std.io.Writer(@TypeOf(.{}), error{}, draw_string_writer);
 pub const writer = Writer{ .context = .{} };
@@ -78,6 +79,8 @@ var hw_framebuffer_blue_field_position: u8 = undefined;
 
 pub fn initialize(address: u32, pitch: u32, bpp: u8, color: u32, red_pos: u8, green_pos: u8, blue_pos: u8) void {
     default_font.data = &default_font_data;
+    default_font.width = 8;
+    default_font.height = 16;
 
     hw_framebuffer.data = @ptrFromInt(address);
     hw_framebuffer.bpp = bpp;
@@ -86,7 +89,7 @@ pub fn initialize(address: u32, pitch: u32, bpp: u8, color: u32, red_pos: u8, gr
     hw_framebuffer_green_field_position = green_pos / 8;
     hw_framebuffer_blue_field_position = blue_pos / 8;
     current_framebuffer = &main_framebuffer;
-    current_font = @constCast(&default_font);
+    current_font = &default_font;
 
     // fill the framebuffer with the specified color
     var i: u32 = 0;

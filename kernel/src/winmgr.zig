@@ -62,7 +62,7 @@ pub fn window_under_cursor() ?*Window {
 }
 
 pub fn new_window(x: u32, y: u32, width: u32, height: u32) !*Window {
-    var window: *Window = try heap.allocator.create(Window);
+    const window: *Window = try heap.allocator.create(Window);
     errdefer heap.allocator.destroy(window);
     window.*.next = null;
     window.*.prev = null;
@@ -243,7 +243,7 @@ fn move_window_to_front(window: *Window) void {
     window.*.framebuffer.*.next = null;
 
     // move the passed window to the beginning
-    var prev = window.*.prev;
+    const prev = window.*.prev;
     if (prev != null)
         prev.?.*.next = window.*.next;
     if (window.*.next != null)

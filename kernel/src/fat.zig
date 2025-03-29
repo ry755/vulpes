@@ -52,12 +52,12 @@ fn initializeFn(interface: *fatfs.Disk) fatfs.Disk.Error!fatfs.Disk.Status {
 
 fn readFn(interface: *fatfs.Disk, buff: [*]u8, sector: fatfs.LBA, count: c_uint) fatfs.Disk.Error!void {
     _ = interface;
-    disk_read_sector(sector, buff, count);
+    disk_read_sector(@truncate(sector), buff, count);
 }
 
 fn writeFn(interface: *fatfs.Disk, buff: [*]const u8, sector: fatfs.LBA, count: c_uint) fatfs.Disk.Error!void {
     _ = interface;
-    disk_write_sector(sector, buff, count);
+    disk_write_sector(@truncate(sector), buff, count);
 }
 
 fn ioctlFn(interface: *fatfs.Disk, cmd: fatfs.IoCtl, buff: [*]u8) fatfs.Disk.Error!void {

@@ -6,12 +6,14 @@ pub inline fn inb(port: u16) u8 {
 }
 
 pub inline fn insl(port: u16, address: *void, count: u32) void {
+    var a = address;
+    var c = count;
     asm volatile ("cld; rep insl"
-        : [address1] "={edi}" (address),
-          [count1] "={ecx}" (count),
+        : [address1] "={edi}" (a),
+          [count1] "={ecx}" (c),
         : [port] "{edx}" (port),
-          [address2] "0" (address),
-          [count2] "1" (count),
+          [address2] "0" (a),
+          [count2] "1" (c),
         : "memory", "cc"
     );
 }
@@ -25,12 +27,14 @@ pub inline fn outb(port: u16, value: u8) void {
 }
 
 pub inline fn outsl(port: u16, address: *void, count: u32) void {
+    var a = address;
+    var c = count;
     asm volatile ("cld; rep outsl"
-        : [address1] "={esi}" (address),
-          [count1] "={ecx}" (count),
+        : [address1] "={esi}" (a),
+          [count1] "={ecx}" (c),
         : [port] "{edx}" (port),
-          [address2] "0" (address),
-          [count2] "1" (count),
+          [address2] "0" (a),
+          [count2] "1" (c),
         : "cc"
     );
 }

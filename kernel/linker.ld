@@ -5,19 +5,19 @@ SECTIONS {
 
     .text : ALIGN(4K) {
         KEEP(*(.multiboot))
-        *(.text)
+        *(.text .text.*)
     }
 
     .rodata : ALIGN(4K) {
-        *(.rodata)
+        *(.rodata .rodata.*)
     }
 
     .data : ALIGN(4K) {
-        *(.data)
+        *(.data .data.*)
     }
 
     .bss : ALIGN(4K) {
-        *(.bss)
         *(COMMON)
+        *(.bss .bss.*)
     }
 }
